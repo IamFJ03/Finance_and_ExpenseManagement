@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Transaction, Budget
+from .models import Category, Transaction, Budget, SavingGoal
 
 class CategorySerializer(serializers.ModelSerializer):
 
@@ -97,3 +97,39 @@ class BudgetSerializer(serializers.ModelSerializer):
                 )
 
         return value
+
+class SavingGoalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavingGoal
+        fields = ['id', 'user', 'name', 'target_amount', 'saved_amount', 'target_date', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+    def validate_target_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Target amount cannot be 0 or less then 0")
+
+        return value
+
+    def validate_saved_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Saved amount cannot be below 0")
+
+        return value
+
+    def validate(self, attrs):
+        saved_amount = attrs.get(
+            'saved_amount',
+            self.instance.saved_amount if self.instance else 0
+        )
+
+        target_amount = attrs.get(
+            'target_amount',
+            self.instance.target_amount if self.instance else None
+        )
+
+        if target_amount is not None and target_amount < saved_amount:
+            raise serializers.ValidationError(
+                {"saved_amount": "Saved Amount cannot exceed target amount"}
+            )
+
+        return attrs
