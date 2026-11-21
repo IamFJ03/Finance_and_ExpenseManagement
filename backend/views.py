@@ -2,10 +2,12 @@ from django.shortcuts import render
 from django.views.generic import CreateView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.db.models import Sum, Count
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from rest_framework import status, viewsets
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
@@ -109,3 +111,27 @@ class SavingGoalViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user = self.request.user)
+
+class FinancialSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_transaction = Transaction.objects.filter(
+            user = request.user
+        )
+
+        total_income = user_transaction.filter(
+            transaction_types = 'income'
+        ).aggregate(total = Sum('amount'))['total'] or 0
+
+        total_expense = user_transaction.filter(
+            transaction_types = 'expense'
+        ).aggregate(total = Sum('amount'))['total'] or 0
+
+        balance = total_income - total_expense
+
+        return Response({
+            'total_income': total_income,
+            'total_expense': total_expense,
+            'balance': balance
+        })
