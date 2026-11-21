@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Transaction
+from .models import Category, Transaction, Budget
 
 class CategorySerializer(serializers.ModelSerializer):
 
@@ -62,3 +62,38 @@ class TransactionSerializer(serializers.ModelSerializer):
                 })
 
         return attrs
+
+class BudgetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Budget
+        fields = ['id', 'user', 'category', 'amount', 'month', 'created_at']
+        read_only_fields = ['id','user', 'created_at']
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater then 0")
+
+        return value
+
+    def validate_category(self, value):
+
+        request = self.context.get('request')
+
+        if value.user != request.user:
+            raise serializers.ValidationError("You cannot use another user's category")
+
+        return value
+
+    def validate(self, value):
+        category = value.get(
+            'category',
+            self.instance.category if self.instance else None
+        )
+
+        if category:
+            if category.category_type != "expense":
+                raise serializers.ValidationError(
+                    {"category": "Must be of expense"}
+                )
+
+        return value

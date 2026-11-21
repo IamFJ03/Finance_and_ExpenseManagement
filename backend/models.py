@@ -68,3 +68,36 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_types} - {self.amount}"
+
+class Budget(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="budgets"
+    )
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="budgets"
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
+
+    month = models.DateField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields= ['user', 'category', 'month'],
+                name='unique_user_category_month_budget'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.category.name} - {self.month}"
