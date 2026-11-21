@@ -9,8 +9,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-from .models import Category, Transaction
-from .serializers import CategorySerializer, TransactionSerializer
+from .models import Category, Transaction, Budget
+from .serializers import CategorySerializer, TransactionSerializer, BudgetSerializer
 
 # Create your views here.
 
@@ -86,6 +86,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Transaction.objects.filter(user = self.request.user).select_related('category')
+
+    def perform_create(self, serializer):
+        serializer.save(user = self.request.user)
+
+class BudgetViewSet(viewsets.ModelViewSet):
+    serializer_class = BudgetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Budget.objects.filter(user = self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user = self.request.user)
