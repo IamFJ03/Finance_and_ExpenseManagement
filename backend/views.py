@@ -3,6 +3,7 @@ from django.views.generic import CreateView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db.models import Sum, Count
+from django.db.models.functions import TruncMonth
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.response import Response
@@ -135,3 +136,20 @@ class FinancialSummaryView(APIView):
             'total_expense': total_expense,
             'balance': balance
         })
+
+class MonthlySummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        monthly_data = Transaction.objects.filter(
+            user = request.user
+        ).annotate(
+            month = TruncMonth('transaction_date')
+        ).values(
+            'month',
+            'transaction_types'
+        ).annotate(
+            total = Sum('amount')
+        ).order_by('month')
+
+        return Response(monthly_data)
