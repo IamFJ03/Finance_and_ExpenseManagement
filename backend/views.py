@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.db.models import Sum, Count
-from django.db.models.functions import TruncMonth
+from django.db.models import Sum, Count, Q, DecimalField, Value
+from django.db.models.functions import TruncMonth, Coalesce
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework.response import Response
@@ -12,6 +12,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from .models import Category, Transaction, Budget, SavingGoal
+from rest_framework.exceptions import ValidationError
+from django.utils.dateparse import parse_date
 from .serializers import CategorySerializer, TransactionSerializer, BudgetSerializer, SavingGoalSerializer
 
 # Create your views here.
@@ -168,3 +170,55 @@ class CategorySummaryView(APIView):
         )
 
         return Response(category)
+
+class BudgetComparisonView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month = request.query_params.get('month')
+
+        if not month:
+            raise ValidationError({
+                'month': 'Please provide month in YYYY-MM-DD format.'
+            })
+
+        selected_month = parse_date(month)
+
+        if not selected_month or selected_month.day !=1:
+            raise ValidationError({
+                'month': 'Enter a valid month using YYYY-MM-01 format.'
+            })
+
+        budget_data = Budget.objects.filter(
+            user = request.user,
+            month = selected_month
+        ).annotate(
+            actual_spending = Coalesce(
+                Sum(
+                    'category__transactions__amount',
+                    filter = Q(
+                        category__transactions__user=request.user,
+                        category__transactions__transaction_types='expense',
+                        category__transactions__transaction_date__year=selected_month.year,
+                        category__transactions__transaction_date__month=selected_month.month
+                    )
+                ),
+                Value(0),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        result = []
+
+        for budget in budget_data:
+
+            remaining_budget = budget.amount - budget.actual_spending
+            result.append({
+                'category': budget.category.name,
+                'budget_amount': budget.amount,
+                'actual_spending': budget.actual_spending,
+                'remaining_budget': remaining_budget,
+                'exceeded': budget.actual_spending > budget.amount
+            })
+
+        return Response(result)
