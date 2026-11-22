@@ -19,7 +19,7 @@ from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from backend import views
-from backend.views import FinancialSummaryView, MonthlySummaryView
+from backend.views import FinancialSummaryView, MonthlySummaryView, CategorySummaryView
 
 router = DefaultRouter()
 
@@ -33,5 +33,6 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/summary/', FinancialSummaryView.as_view(), name='financial-summary'),
     path('api/monthly-summary/', MonthlySummaryView.as_view(), name='monthly-financial-summary'),
+    path('api/category-summary/', CategorySummaryView.as_view(), name='category-summary'),
     path('', include('backend.urls')),
 ]

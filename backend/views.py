@@ -1,5 +1,4 @@
 from django.shortcuts import render
-from django.views.generic import CreateView, ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db.models import Sum, Count
@@ -153,3 +152,19 @@ class MonthlySummaryView(APIView):
         ).order_by('month')
 
         return Response(monthly_data)
+
+class CategorySummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        category = Transaction.objects.filter(
+            user = request.user,
+            transaction_types = 'expense'
+        ).values(
+            'category__name'
+        ).annotate(
+            total_expense = Sum('amount')
+        ).order_by(
+            '-total_expense'
+        )
+
+        return Response(category)
